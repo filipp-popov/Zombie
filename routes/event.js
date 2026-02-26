@@ -58,7 +58,7 @@ router.get('/', function(req, res) {
 
     //Language
     else if(req.query.id === 'game_language'){
-        if ((req.query.param == 'en') || (req.query.param == 'es') || (req.query.param == 'ru')){
+        if ((req.query.param == 'de') || (req.query.param == 'en') || (req.query.param == 'ru')){
             fs.writeFile("language.txt", req.query.param, function (err) {
                 if (err) {
                     console.log(err);

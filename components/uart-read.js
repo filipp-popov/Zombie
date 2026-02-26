@@ -18,6 +18,7 @@ var floor;
 var room;
 var key = 0;
 var lastLight = 0;
+var lastGameState = null;
 
 UArt.read(readPacket);
 
@@ -112,6 +113,26 @@ function readPacket(buff){
     if(boardName == 'main_board'){
         //exec('sudo shutdown -h now');
         global.gameState = (values[0] & 3);
+
+        var gameStatusParam = null;
+        if (global.gameState == 1) {
+            gameStatusParam = 'maintenance';
+        }
+        else if (global.gameState == 3) {
+            gameStatusParam = 'ready';
+        }
+        else if (global.gameState == 2) {
+            gameStatusParam = 'game_started';
+        }
+
+        if (gameStatusParam && lastGameState !== global.gameState) {
+            lastGameState = global.gameState;
+            send2server(querystring.stringify({
+                area: 'zombie',
+                id: 'game_status',
+                param: gameStatusParam
+            }));
+        }
     }
 
     //Main light
