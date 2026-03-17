@@ -115,9 +115,20 @@ watch(global, 'gameState', function (prop, action, value, oldValue) {
     global.boardsTable[0][2] = global.gameState;
     UArt.writePacket('main_board');
 
+    // Door controller keeps its own gameState in byte1; sync it on every state change.
+    // Also enforce lock bit by state:
+    // maintenance/service (0/1) => unlocked, ready/game_started (3/2) => locked.
+    global.boardsTable[18][1] = global.gameState;
+    if (global.gameState == 0 || global.gameState == 1) {
+        global.boardsTable[18][0] &= ~(1 << 7);
+    } else {
+        global.boardsTable[18][0] |= (1 << 7);
+    }
+    UArt.writePacket('door');
+
     global.start = 1;
 
-    if(global.gameState == 1) {
+    if(global.gameState == 0 || global.gameState == 1) {
 
         Play('demo_zombie', 'stop');
         Play('start', 'stop');
@@ -132,6 +143,14 @@ watch(global, 'gameState', function (prop, action, value, oldValue) {
 
         global.finalBoxPermission = 0;
         global.professorTableActivate = 0;
+        // In maintenance mode force bunker door unlocked.
+        global.boardsTable[18][0] &= ~(1 << 7);
+        UArt.writePacket('door');
+        // In maintenance mode, mirror solved final-box snapshot:
+        // finished=true, in_progress=false, lock=false, catalyst=true, reagent=false.
+        global.boardsTable[5][0] &= ~((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
+        global.boardsTable[5][0] |= ((1 << 3) | (1 << 6));
+        UArt.writePacket('final');
 
         console.log('Game State: Service');
 
@@ -246,6 +265,9 @@ watch(global, 'gameState', function (prop, action, value, oldValue) {
 
         global.finalBoxPermission = 0;
         global.professorTableActivate = 0;
+        // In ready mode the final box lock must be ON.
+        global.boardsTable[5][0] |= (1 << 5);
+        UArt.writePacket('final');
         console.log('Game State: Ready');
 
         send2server(querystring.stringify({

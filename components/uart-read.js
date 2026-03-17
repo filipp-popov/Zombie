@@ -112,10 +112,19 @@ function readPacket(buff){
     //Main board
     if(boardName == 'main_board'){
         //exec('sudo shutdown -h now');
-        global.gameState = (values[0] & 3);
+        var nextGameState = (values[0] & 3);
+        // Do not auto-switch to Ready right after puzzle completion.
+        // Ready can still be set explicitly via /event game_status.
+        if (global.gameState == 2 && nextGameState == 3 && global.final_box_finished_flag == 1) {
+            console.log('Ignoring auto Ready transition after final box completion');
+        }
+        else {
+            global.gameState = nextGameState;
+        }
 
         var gameStatusParam = null;
-        if (global.gameState == 1) {
+        // Some main board firmware revisions report non-start states as 0.
+        if (global.gameState == 0 || global.gameState == 1) {
             gameStatusParam = 'maintenance';
         }
         else if (global.gameState == 3) {
@@ -127,6 +136,7 @@ function readPacket(buff){
 
         if (gameStatusParam && lastGameState !== global.gameState) {
             lastGameState = global.gameState;
+            console.log('Game status switch:', global.gameState, '=>', gameStatusParam);
             send2server(querystring.stringify({
                 area: 'zombie',
                 id: 'game_status',
@@ -394,7 +404,16 @@ function readPacket(buff){
         //
         //console.log('errors: ' + (global.reqNum - global.resNum) + '/' + global.reqNum);
 
-        if ((values[0] >> 5) & 1) {
+        if (global.gameState != 2) {
+            // Keep air-mail locks forced ON in maintenance/ready modes.
+            if (!Universal.readLock1(address) || !Universal.readLock2(address)) {
+                Universal.writeLock1(address, 1);
+                Universal.writeLock2(address, 1);
+                UArt.writePacket('air_mail');
+            }
+        }
+
+        if (Universal.readLock1(address)) {
             send2server(querystring.stringify({
                 area: 'zombie',
                 id: 'girl_air_tube_lock_on',
@@ -721,6 +740,11 @@ function readPacket(buff){
 
     //Door
     else if(boardName == 'door') {
+        // Force bunker door unlocked in maintenance/service modes.
+        if ((global.gameState == 0 || global.gameState == 1) && (((values[0] >> 7) & 1) == 1)) {
+            global.boardsTable[address][0] &= ~(1 << 7);
+            UArt.writePacket('door');
+        }
 
         if(global.Step != ((values[0] >> 4) & 7)){
 

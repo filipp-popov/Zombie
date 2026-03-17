@@ -40,14 +40,34 @@ router.get('/', function(req, res) {
         if(req.query.param === 'maintenance'){
             //������������
             global.gameState = 1; //?????????
+            boardAddress = 18;
+            global.boardsTable[boardAddress][1] = global.gameState;
+            global.boardsTable[boardAddress][0] &= ~(1<<7);
+            UartWrite(boardAddress);
+
+            boardAddress = 5;
+            global.boardsTable[boardAddress][0] &= ~(1<<5);
+            UartWrite(boardAddress);
         }
         else if(req.query.param === 'ready'){
             //����������
             global.gameState = 3;
+            boardAddress = 18;
+            global.boardsTable[boardAddress][1] = global.gameState;
+            global.boardsTable[boardAddress][0] |= (1<<7);
+            UartWrite(boardAddress);
+
+            boardAddress = 5;
+            global.boardsTable[boardAddress][0] |= (1<<5);
+            UartWrite(boardAddress);
         }
         else if(req.query.param === 'game_started'){
             //����
             global.gameState = 2;
+            boardAddress = 18;
+            global.boardsTable[boardAddress][1] = global.gameState;
+            global.boardsTable[boardAddress][0] |= (1<<7);
+            UartWrite(boardAddress);
         }
         else{
             console.log('ID: ' + req.query.id);

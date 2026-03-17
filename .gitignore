@@ -40,6 +40,58 @@ professorKey.txt
 Thumbs.db
 
 
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime / logs
+storage/
+*.log
+
+# Secrets & local config
+config.json
+professorKey.txt
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+
+
+
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime / logs
+storage/
+*.log
+
+# Secrets & local config
+config.json
+professorKey.txt
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Sound files
+*.mp3
+*.wav
+*.ogg
+*.m4a
+*.flac
+*.aac
+
+
+
+
+
 
 
 
