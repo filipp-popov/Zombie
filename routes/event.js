@@ -39,6 +39,62 @@ function sendZombieState(eventId, param) {
     }));
 }
 
+function applyMaintenanceHardwareState() {
+    boardAddress = 17;
+    global.boardsTable[boardAddress][0] &= ~(1 << 6);
+    global.boardsTable[boardAddress][0] &= ~(1 << 5);
+    UartWrite(boardAddress);
+
+    boardAddress = 18;
+    global.boardsTable[boardAddress][1] = global.gameState;
+    global.boardsTable[boardAddress][0] &= ~(1 << 2);
+    global.boardsTable[boardAddress][0] &= ~(1 << 3);
+    global.boardsTable[boardAddress][0] &= ~(1 << 7);
+    UartWrite(boardAddress);
+
+    boardAddress = 5;
+    global.boardsTable[boardAddress][0] &= ~((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
+    UartWrite(boardAddress);
+}
+
+function applyReadyHardwareState() {
+    boardAddress = 17;
+    global.boardsTable[boardAddress][0] &= ~(1 << 5);
+    global.boardsTable[boardAddress][0] |= (1 << 6);
+    UartWrite(boardAddress);
+
+    boardAddress = 18;
+    global.boardsTable[boardAddress][1] = global.gameState;
+    global.boardsTable[boardAddress][0] &= ~(1 << 2);
+    global.boardsTable[boardAddress][0] &= ~(1 << 3);
+    global.boardsTable[boardAddress][0] |= (1 << 7);
+    UartWrite(boardAddress);
+
+    boardAddress = 5;
+    global.boardsTable[boardAddress][0] &= ~((1 << 3) | (1 << 4) | (1 << 6) | (1 << 7));
+    global.boardsTable[boardAddress][0] |= (1 << 5);
+    UartWrite(boardAddress);
+}
+
+function applyGameStartedHardwareState() {
+    boardAddress = 17;
+    global.boardsTable[boardAddress][0] &= ~(1 << 5);
+    global.boardsTable[boardAddress][0] |= (1 << 6);
+    UartWrite(boardAddress);
+
+    boardAddress = 18;
+    global.boardsTable[boardAddress][1] = global.gameState;
+    global.boardsTable[boardAddress][0] &= ~(1 << 2);
+    global.boardsTable[boardAddress][0] &= ~(1 << 3);
+    global.boardsTable[boardAddress][0] |= (1 << 7);
+    UartWrite(boardAddress);
+
+    boardAddress = 5;
+    global.boardsTable[boardAddress][0] &= ~((1 << 3) | (1 << 4));
+    global.boardsTable[boardAddress][0] |= (1 << 5);
+    UartWrite(boardAddress);
+}
+
 function solveSterilizerFromAdmin() {
     boardAddress = 17;
     global.boardsTable[boardAddress][0] &= ~(1 << 6);
@@ -115,49 +171,17 @@ router.get('/', function(req, res) {
         if(req.query.param === 'maintenance'){
             //������������
             global.gameState = 1; //?????????
-            boardAddress = 17;
-            global.boardsTable[boardAddress][0] &= ~(1 << 6);
-            global.boardsTable[boardAddress][0] &= ~(1 << 5);
-            UartWrite(boardAddress);
-
-            boardAddress = 18;
-            global.boardsTable[boardAddress][1] = global.gameState;
-            global.boardsTable[boardAddress][0] &= ~(1 << 2);
-            global.boardsTable[boardAddress][0] &= ~(1 << 3);
-            global.boardsTable[boardAddress][0] &= ~(1<<7);
-            UartWrite(boardAddress);
-
-            boardAddress = 5;
-            global.boardsTable[boardAddress][0] &= ~((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
-            UartWrite(boardAddress);
+            applyMaintenanceHardwareState();
         }
         else if(req.query.param === 'ready'){
             //����������
             global.gameState = 3;
-            boardAddress = 17;
-            global.boardsTable[boardAddress][0] &= ~(1 << 5);
-            global.boardsTable[boardAddress][0] |= (1 << 6);
-            UartWrite(boardAddress);
-
-            boardAddress = 18;
-            global.boardsTable[boardAddress][1] = global.gameState;
-            global.boardsTable[boardAddress][0] &= ~(1 << 2);
-            global.boardsTable[boardAddress][0] &= ~(1 << 3);
-            global.boardsTable[boardAddress][0] |= (1<<7);
-            UartWrite(boardAddress);
-
-            boardAddress = 5;
-            global.boardsTable[boardAddress][0] &= ~((1 << 3) | (1 << 4) | (1 << 6) | (1 << 7));
-            global.boardsTable[boardAddress][0] |= (1<<5);
-            UartWrite(boardAddress);
+            applyReadyHardwareState();
         }
         else if(req.query.param === 'game_started'){
             //����
             global.gameState = 2;
-            boardAddress = 18;
-            global.boardsTable[boardAddress][1] = global.gameState;
-            global.boardsTable[boardAddress][0] |= (1<<7);
-            UartWrite(boardAddress);
+            applyGameStartedHardwareState();
         }
         else{
             console.log('ID: ' + req.query.id);
@@ -330,28 +354,6 @@ router.get('/', function(req, res) {
     }
 
     //Door
-    else if(req.query.id === 'prison_lock_on'){
-        boardAddress = 18;
-        if(req.query.param === 'true'){
-            global.boardsTable[boardAddress][0] |= 128;
-            UartWrite(boardAddress);
-        }
-        else if(req.query.param === 'false'){
-            if (global.gameState == 2) {
-                solvePrisonFromAdmin();
-            }
-            else {
-                global.boardsTable[boardAddress][0] &= 127;
-                UartWrite(boardAddress);
-            }
-        }
-        else{
-            console.log('ID: ' + req.query.id);
-            console.log('Unknown param: ' + req.query.param);
-        }
-        res.send(req.query);
-    }
-
     else if(req.query.id === 'prison_lock_on'){
         boardAddress = 18;
         if(req.query.param === 'true'){
