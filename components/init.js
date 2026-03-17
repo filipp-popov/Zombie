@@ -143,13 +143,14 @@ watch(global, 'gameState', function (prop, action, value, oldValue) {
 
         global.finalBoxPermission = 0;
         global.professorTableActivate = 0;
+        global.prison_correct_input_sound_flag = 0;
         // In maintenance mode force bunker door unlocked.
         global.boardsTable[18][0] &= ~(1 << 7);
         UArt.writePacket('door');
-        // In maintenance mode, mirror solved final-box snapshot:
-        // finished=true, in_progress=false, lock=false, catalyst=true, reagent=false.
+        // In maintenance mode keep controlled locks open and reset puzzle-complete bits.
+        global.boardsTable[17][0] &= ~(1 << 6);
+        UArt.writePacket('sterilizer');
         global.boardsTable[5][0] &= ~((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
-        global.boardsTable[5][0] |= ((1 << 3) | (1 << 6));
         UArt.writePacket('final');
 
         console.log('Game State: Service');
@@ -265,7 +266,13 @@ watch(global, 'gameState', function (prop, action, value, oldValue) {
 
         global.finalBoxPermission = 0;
         global.professorTableActivate = 0;
-        // In ready mode the final box lock must be ON.
+        global.prison_correct_input_sound_flag = 0;
+        // In ready mode the puzzle locks must be ON and progress bits reset.
+        global.boardsTable[17][0] |= (1 << 6);
+        UArt.writePacket('sterilizer');
+        global.boardsTable[18][0] |= (1 << 7);
+        UArt.writePacket('door');
+        global.boardsTable[5][0] &= ~((1 << 3) | (1 << 4) | (1 << 6) | (1 << 7));
         global.boardsTable[5][0] |= (1 << 5);
         UArt.writePacket('final');
         console.log('Game State: Ready');

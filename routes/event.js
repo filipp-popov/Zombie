@@ -31,6 +31,81 @@ function taskCancel(task){
     }
 }
 
+function sendZombieState(eventId, param) {
+    send2server(querystring.stringify({
+        area: 'zombie',
+        id: eventId,
+        param: param
+    }));
+}
+
+function solveSterilizerFromAdmin() {
+    boardAddress = 17;
+    global.boardsTable[boardAddress][0] &= ~(1 << 6);
+    global.boardsTable[boardAddress][0] |= (1 << 5);
+    UartWrite(boardAddress);
+    sendZombieState('sterilizer_completed', 'true');
+}
+
+function solvePrisonFromAdmin() {
+    boardAddress = 18;
+    global.boardsTable[boardAddress][0] |= (1 << 2);
+    global.boardsTable[boardAddress][0] &= ~(1 << 3);
+    global.boardsTable[boardAddress][0] &= ~(1 << 7);
+    UartWrite(boardAddress);
+
+    if (global.prison_correct_input_sound_flag === 0) {
+        global.prison_correct_input_sound_flag = 1;
+        Play('prison_correct_input_sound');
+    }
+
+    sendZombieState('prison_correct_input', 'true');
+}
+
+function solveFinalBoxFromAdmin() {
+    boardAddress = 5;
+
+    if (((global.boardsTable[boardAddress][0] >> 4) & 1) === 0) {
+        Play('demo_zombie', 'stop');
+        Play('final');
+        global.boardsTable[boardAddress][0] |= (1 << 4);
+        UartWrite(boardAddress);
+        sendZombieState('final_box_in_progress', 'true');
+
+        setTimeout(function() {
+            global.switchLight = 100;
+            Universal.writeRelay1(boardToAddress('main_light'), 0);
+            Universal.writeRelay2(boardToAddress('main_light'), 0);
+            UArt.writePacket('main_light');
+        }, 100);
+
+        setTimeout(function() {
+            global.switchLight = 0;
+        }, 35000);
+    }
+
+    global.boardsTable[boardAddress][0] &= ~(1 << 5);
+    global.boardsTable[boardAddress][0] |= (1 << 3);
+    UartWrite(boardAddress);
+
+    if (global.final_box_finished_flag === 0) {
+        global.final_box_finished_flag = 1;
+
+        taskRunDelay('play_final_box_finished_1', function () {
+            Play('final_box_finished_1');
+        }, 500);
+
+        taskRunDelay('play_final_box_finished_2', function () {
+            Play('final_box_finished_2');
+        }, 4000);
+
+        Universal.writeLock2(2, 0);
+        UArt.writePacket('main_light');
+    }
+
+    sendZombieState('final_box_finished', 'true');
+}
+
 
 /* GET home page. */
 router.get('/', function(req, res) {
@@ -40,24 +115,39 @@ router.get('/', function(req, res) {
         if(req.query.param === 'maintenance'){
             //������������
             global.gameState = 1; //?????????
+            boardAddress = 17;
+            global.boardsTable[boardAddress][0] &= ~(1 << 6);
+            global.boardsTable[boardAddress][0] &= ~(1 << 5);
+            UartWrite(boardAddress);
+
             boardAddress = 18;
             global.boardsTable[boardAddress][1] = global.gameState;
+            global.boardsTable[boardAddress][0] &= ~(1 << 2);
+            global.boardsTable[boardAddress][0] &= ~(1 << 3);
             global.boardsTable[boardAddress][0] &= ~(1<<7);
             UartWrite(boardAddress);
 
             boardAddress = 5;
-            global.boardsTable[boardAddress][0] &= ~(1<<5);
+            global.boardsTable[boardAddress][0] &= ~((1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7));
             UartWrite(boardAddress);
         }
         else if(req.query.param === 'ready'){
             //����������
             global.gameState = 3;
+            boardAddress = 17;
+            global.boardsTable[boardAddress][0] &= ~(1 << 5);
+            global.boardsTable[boardAddress][0] |= (1 << 6);
+            UartWrite(boardAddress);
+
             boardAddress = 18;
             global.boardsTable[boardAddress][1] = global.gameState;
+            global.boardsTable[boardAddress][0] &= ~(1 << 2);
+            global.boardsTable[boardAddress][0] &= ~(1 << 3);
             global.boardsTable[boardAddress][0] |= (1<<7);
             UartWrite(boardAddress);
 
             boardAddress = 5;
+            global.boardsTable[boardAddress][0] &= ~((1 << 3) | (1 << 4) | (1 << 6) | (1 << 7));
             global.boardsTable[boardAddress][0] |= (1<<5);
             UartWrite(boardAddress);
         }
@@ -207,8 +297,13 @@ router.get('/', function(req, res) {
             UartWrite(boardAddress);
         }
         else if(req.query.param === 'false'){
-            global.boardsTable[boardAddress][0] &= 191;
-            UartWrite(boardAddress);
+            if (global.gameState == 2) {
+                solveSterilizerFromAdmin();
+            }
+            else {
+                global.boardsTable[boardAddress][0] &= 191;
+                UartWrite(boardAddress);
+            }
         }
         else{
             console.log('ID: ' + req.query.id);
@@ -242,8 +337,13 @@ router.get('/', function(req, res) {
             UartWrite(boardAddress);
         }
         else if(req.query.param === 'false'){
-            global.boardsTable[boardAddress][0] &= 127;
-            UartWrite(boardAddress);
+            if (global.gameState == 2) {
+                solvePrisonFromAdmin();
+            }
+            else {
+                global.boardsTable[boardAddress][0] &= 127;
+                UartWrite(boardAddress);
+            }
         }
         else{
             console.log('ID: ' + req.query.id);
@@ -259,8 +359,13 @@ router.get('/', function(req, res) {
             UartWrite(boardAddress);
         }
         else if(req.query.param === 'false'){
-            global.boardsTable[boardAddress][0] &= 127;
-            UartWrite(boardAddress);
+            if (global.gameState == 2) {
+                solvePrisonFromAdmin();
+            }
+            else {
+                global.boardsTable[boardAddress][0] &= 127;
+                UartWrite(boardAddress);
+            }
         }
         else{
             console.log('ID: ' + req.query.id);
@@ -331,8 +436,13 @@ router.get('/', function(req, res) {
             UartWrite(boardAddress);
         }
         else if(req.query.param === 'false'){
-            global.boardsTable[boardAddress][0] &= ~(1<<5);
-            UartWrite(boardAddress);
+            if (global.gameState == 2) {
+                solveFinalBoxFromAdmin();
+            }
+            else {
+                global.boardsTable[boardAddress][0] &= ~(1<<5);
+                UartWrite(boardAddress);
+            }
         }
         else{
             console.log('ID: ' + req.query.id);
